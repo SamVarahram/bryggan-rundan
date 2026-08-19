@@ -1,6 +1,21 @@
 import "./style.css";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+const defaultMarkerIcon = L.icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+L.Marker.prototype.options.icon = defaultMarkerIcon;
 
 const STORAGE_VISITED = "pubar-pa-rad-visited";
 const EVENT_DATE = "1 september";
@@ -14,6 +29,7 @@ const stops = [
     time: "17:00",
     drink: "Glas rött och MAT",
     tag: "vin",
+    image: "/pubs/bene-pasta-bar.jpg", // valfritt: "/pubs/bene-pasta-bar.jpg"
   },
   {
     name: "Liljebaren",
@@ -23,6 +39,7 @@ const stops = [
     time: "18:30",
     drink: "Öl för 16 åringar",
     tag: "ol",
+    image: "/pubs/sam.JPEG", // valfritt: "/pubs/liljebaren.jpg"
   },
   {
     name: "TacoBar",
@@ -32,6 +49,7 @@ const stops = [
     time: "19:00",
     drink: "Frostat glas å ÖL",
     tag: "ol",
+    image: "/pubs/valborg.jpg", // valfritt: "/pubs/tacobar.jpg"
   },
   {
     name: "O:conners",
@@ -41,6 +59,7 @@ const stops = [
     time: "19:30",
     drink: "Guinness",
     tag: "ol",
+    image: "/pubs/mirre_skadad.PNG", // valfritt: "/pubs/oconners.jpg"
   },
   {
     name: "Ica City",
@@ -50,6 +69,7 @@ const stops = [
     time: "20:00",
     drink: "MAGI",
     tag: "special",
+    image: "/pubs/mirre_skadad.PNG", // valfritt: "/pubs/ica-city.jpg"
   },
   {
     name: "Sushi yama",
@@ -59,6 +79,7 @@ const stops = [
     time: "20:30",
     drink: "Soja?",
     tag: "alkoholfritt",
+    image: "/pubs/amanda_död.jpg", // valfritt: "/pubs/sushi-yama.jpg"
   },
   {
     name: "Monster Chicken",
@@ -68,6 +89,7 @@ const stops = [
     time: "21:00",
     drink: "Gochujang",
     tag: "mat",
+    image: "/pubs/sausage.png", // valfritt: "/pubs/monster-chicken.jpg"
   },
   {
     name: "Filmstaden Luxe",
@@ -77,6 +99,7 @@ const stops = [
     time: "21:30",
     drink: "Movie Beer",
     tag: "ol",
+    image: "/pubs/Filmstaden.JPG", // valfritt: "/pubs/filmstaden-luxe.jpg"
   },
   {
     name: "Snerkes",
@@ -86,6 +109,7 @@ const stops = [
     time: "22:00",
     drink: "Vem har KK-kort?",
     tag: "special",
+    image: "/pubs/IMG_0030.jpg", // valfritt: "/pubs/snerkes.jpg"
   },
 ];
 
@@ -119,6 +143,22 @@ function getCurrentStopIndex() {
 function mapsUrl(stop) {
   const query = encodeURIComponent(stop.address || `${stop.lat},${stop.lng}`);
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+function buildMarkerPopup(stop, index) {
+  const imageHtml = stop.image?.trim()
+    ? `<img class="map-popup-image" src="${stop.image}" alt="${stop.name}" loading="lazy" />`
+    : "";
+
+  return `
+    <div class="map-popup">
+      ${imageHtml}
+      <strong>${index + 1}. ${stop.name}</strong><br/>
+      ${stop.time}<br/>
+      Förslag: ${stop.drink}<br/>
+      <a href="${mapsUrl(stop)}" target="_blank" rel="noopener noreferrer">Öppna i Maps</a>
+    </div>
+  `;
 }
 
 function saveVisited() {
@@ -164,8 +204,8 @@ function render() {
   document.querySelector("#app").innerHTML = `
     <main class="layout">
       <header class="hero">
-        <p class="eyebrow">Varför är vi här</p>
-        <h1>Pubar på rad igen är glad</h1>
+        <p class="eyebrow">Varför är vi här?</p>
+        <h1>Pubar på rad, ingen är glad!</h1>
         <p class="hero-text">${EVENT_DATE}. Rundan startar ${stops[0].time} på ${stops[0].name}. Vi äter mat här tillsammans så magen är redo för kvällen!</p>
         <div class="hero-actions">
           <button type="button" id="share-btn" class="btn btn-primary">Dela rundan</button>
@@ -291,12 +331,9 @@ function initMap(currentStopIndex) {
 
   stops.forEach((stop, index) => {
     const isCurrent = index === currentStopIndex;
-    const marker = L.marker([stop.lat, stop.lng]).addTo(map).bindPopup(`
-        <strong>${index + 1}. ${stop.name}</strong><br/>
-        ${stop.time}<br/>
-        Förslag: ${stop.drink}<br/>
-        <a href="${mapsUrl(stop)}" target="_blank" rel="noopener noreferrer">Öppna i Maps</a>
-      `);
+    const marker = L.marker([stop.lat, stop.lng])
+      .addTo(map)
+      .bindPopup(buildMarkerPopup(stop, index));
 
     if (isCurrent) {
       marker.openPopup();

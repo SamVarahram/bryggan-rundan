@@ -348,6 +348,15 @@ h3 {
   margin-top: 0.65rem;
 }
 
+.map-popup-image {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
 .safety {
   border-style: dashed;
 }
