@@ -1,0 +1,164 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #e5e7eb;
+  background-color: #0f172a;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #1e293b, #0f172a 45%);
+}
+
+#app {
+  width: min(980px, 100% - 2rem);
+  margin: 0 auto;
+  padding: 1.25rem 0 2rem;
+}
+
+.layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.hero,
+.panel {
+  background: rgba(15, 23, 42, 0.74);
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 1rem 1rem 1.1rem;
+  backdrop-filter: blur(4px);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+h1 {
+  margin: 0.15rem 0 0.25rem;
+  font-size: clamp(1.7rem, 3.8vw, 2.6rem);
+  color: #f8fafc;
+}
+
+h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.2rem;
+  color: #f8fafc;
+}
+
+h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #f8fafc;
+}
+
+.hero-text,
+.map-header p,
+.note,
+.safety p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.stop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.stop-card {
+  border: 1px solid #334155;
+  background: #111827;
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.stop-card-current {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #f59e0b inset;
+}
+
+.stop-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stop-time {
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.pill {
+  display: inline-block;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  margin-right: 0.3rem;
+  text-transform: uppercase;
+}
+
+.pill-beer {
+  background: #78350f;
+  color: #fde68a;
+}
+
+.pill-cocktail {
+  background: #581c87;
+  color: #f5d0fe;
+}
+
+.pill-shot {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+.pill-mocktail {
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+#map {
+  width: 100%;
+  height: 340px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #475569;
+  margin-top: 0.65rem;
+}
+
+.safety {
+  border-style: dashed;
+}
+
+@media (min-width: 800px) {
+  #app {
+    padding-top: 2rem;
+  }
+
+  .layout {
+    gap: 1.2rem;
+  }
+
+  .hero,
+  .panel {
+    padding: 1.25rem;
+  }
+}
