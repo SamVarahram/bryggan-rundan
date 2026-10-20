@@ -1,164 +1,52 @@
 import "./style.css";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-const defaultMarkerIcon = L.icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-L.Marker.prototype.options.icon = defaultMarkerIcon;
+import { EVENT_DATE, stops } from "./stops.js";
+import { createWalkMap } from "./walk-map.js";
 
 const STORAGE_VISITED = "pubar-pa-rad-visited";
-const EVENT_DATE = "1 september";
 
-const stops = [
-  {
-    name: "Bene Pasta bar",
-    address: "S:t Persgatan 35, 753 29 Uppsala",
-    lat: 59.8630749,
-    lng: 17.6453787,
-    time: "17:00",
-    drink: "Glas rött och MAT",
-    tag: "vin",
-    image: `${import.meta.env.BASE_URL}pubs/bene-pasta-bar.jpg`, // valfritt: "/pubs/bene-pasta-bar.jpg"
-  },
-  {
-    name: "Liljebaren",
-    address: "Liljegatan 2, Uppsala",
-    lat: 59.8592681,
-    lng: 17.6569461,
-    time: "18:30",
-    drink: "Öl för 16 åringar",
-    tag: "ol",
-    image: `${import.meta.env.BASE_URL}pubs/sam.JPEG`, // valfritt: "/pubs/liljebaren.jpg"
-  },
-  {
-    name: "TacoBar",
-    address: "Stationsgatan 12-16, 753 25 Uppsala",
-    lat: 59.8585988,
-    lng: 17.6491675,
-    time: "19:00",
-    drink: "Frostat glas å ÖL",
-    tag: "ol",
-    image: `${import.meta.env.BASE_URL}pubs/valborg.jpg`, // valfritt: "/pubs/tacobar.jpg"
-  },
-  {
-    name: "O:conners",
-    address: "Stora Torget 1, Uppsala",
-    lat: 59.8582449,
-    lng: 17.6386146,
-    time: "19:30",
-    drink: "Guinness",
-    tag: "ol",
-    image: `${import.meta.env.BASE_URL}pubs/mirre_skadad.PNG`, // valfritt: "/pubs/oconners.jpg"
-  },
-  {
-    name: "Ica City",
-    address: "Svartbäcksgatan 7-11, Uppsala",
-    lat: 59.8598469,
-    lng: 17.6369864,
-    time: "20:00",
-    drink: "MAGI",
-    tag: "special",
-    image: `${import.meta.env.BASE_URL}pubs/mirre_skadad.PNG`, // valfritt: "/pubs/ica-city.jpg"
-  },
-  {
-    name: "Sushi yama",
-    address: "Svartbäcksgatan 7, Uppsala",
-    lat: 59.8598469,
-    lng: 17.6369864,
-    time: "20:30",
-    drink: "Soja?",
-    tag: "alkoholfritt",
-    image: `${import.meta.env.BASE_URL}pubs/amanda_död.jpg`, // valfritt: "/pubs/sushi-yama.jpg"
-  },
-  {
-    name: "Monster Chicken",
-    address: "Dragarbrunnsgatan 21, Uppsala",
-    lat: 59.8618044,
-    lng: 17.6356975,
-    time: "21:00",
-    drink: "Gochujang",
-    tag: "mat",
-    image: `${import.meta.env.BASE_URL}pubs/sausage.png`, // valfritt: "/pubs/monster-chicken.jpg"
-  },
-  {
-    name: "Filmstaden Luxe",
-    address: "Dragarbrunnsgatan 22, Uppsala",
-    lat: 59.861272,
-    lng: 17.6375857,
-    time: "21:30",
-    drink: "Movie Beer",
-    tag: "ol",
-    image: `${import.meta.env.BASE_URL}pubs/Filmstaden.JPG`, // valfritt: "/pubs/filmstaden-luxe.jpg"
-  },
-  {
-    name: "Snerkes",
-    address: "S:t Larsgatan 4, 753 11 Uppsala",
-    lat: 59.858976,
-    lng: 17.630683,
-    time: "22:00",
-    drink: "Vem har KK-kort?",
-    tag: "special",
-    image: `${import.meta.env.BASE_URL}pubs/IMG_0030.jpg`, // valfritt: "/pubs/snerkes.jpg"
-  },
-];
-
-let map;
-let routeLine;
-let markers = [];
 let visited = new Set(JSON.parse(localStorage.getItem(STORAGE_VISITED) || "[]"));
+
+function assetUrl(path) {
+  return `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
+}
 
 function parseTime(time) {
   const [hour, minute] = time.split(":").map(Number);
   return hour * 60 + minute;
 }
 
-function getCurrentStopIndex() {
+/**
+ * Current time in minutes since midnight. Supports a `?time=HH:MM` query
+ * parameter so the "Du är här"-logic and the map start can be tested.
+ */
+function currentMinutes() {
+  const override = new URLSearchParams(window.location.search).get("time");
+  if (override && /^\d{1,2}:\d{2}$/.test(override)) {
+    return parseTime(override);
+  }
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function getCurrentStopIndex() {
+  const minutes = currentMinutes();
 
   return stops.findIndex((stop, index) => {
     const stopMinutes = parseTime(stop.time);
     const next = stops[index + 1];
 
     if (!next) {
-      return currentMinutes >= stopMinutes;
+      return minutes >= stopMinutes;
     }
 
     const nextMinutes = parseTime(next.time);
-    return currentMinutes >= stopMinutes && currentMinutes < nextMinutes;
+    return minutes >= stopMinutes && minutes < nextMinutes;
   });
 }
 
 function mapsUrl(stop) {
   const query = encodeURIComponent(stop.address || `${stop.lat},${stop.lng}`);
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
-}
-
-function buildMarkerPopup(stop, index) {
-  const imageHtml = stop.image?.trim()
-    ? `<img class="map-popup-image" src="${stop.image}" alt="${stop.name}" loading="lazy" />`
-    : "";
-
-  return `
-    <div class="map-popup">
-      ${imageHtml}
-      <strong>${index + 1}. ${stop.name}</strong><br/>
-      ${stop.time}<br/>
-      Förslag: ${stop.drink}<br/>
-      <a href="${mapsUrl(stop)}" target="_blank" rel="noopener noreferrer">Öppna i Maps</a>
-    </div>
-  `;
 }
 
 function saveVisited() {
@@ -190,7 +78,10 @@ function renderStopCards() {
           </div>
           <p class="stop-address">${stop.address}</p>
           <p><span class="pill pill-${stop.tag}">${stop.tag}</span> Förslag: <strong>${stop.drink}</strong></p>
-          <a class="maps-link" href="${mapsUrl(stop)}" target="_blank" rel="noopener noreferrer">Öppna i Maps</a>
+          <div class="stop-links">
+            <a class="maps-link" href="${mapsUrl(stop)}" target="_blank" rel="noopener noreferrer">Öppna i Maps</a>
+            <button type="button" class="maps-link show-on-map" data-index="${index}">Visa på kartan</button>
+          </div>
         </li>
       `;
     })
@@ -223,13 +114,7 @@ function render() {
         </div>
       </section>
 
-      <section class="panel">
-        <div class="map-header">
-          <h2>Karta</h2>
-          <p>Tryck på en markör för att se drinkförslaget.${currentStopIndex >= 0 ? ` Nuvarande stopp: ${stops[currentStopIndex].name}.` : ""}</p>
-        </div>
-        <div id="map" aria-label="Karta över pubrundan"></div>
-      </section>
+      <section id="walk-section"></section>
 
       <footer class="panel safety">
         <h2>Plan B</h2>
@@ -238,38 +123,36 @@ function render() {
     </main>
   `;
 
-  bindEvents();
-  initMap(currentStopIndex);
-}
-
-function bindEvents() {
-  document.querySelectorAll(".visit-checkbox").forEach((checkbox) => {
-    checkbox.addEventListener("change", (event) => {
-      const index = Number(event.target.dataset.index);
-      if (event.target.checked) {
-        visited.add(index);
-      } else {
-        visited.delete(index);
-      }
-      saveVisited();
-      updateStopList();
-    });
+  // The walk starts at the stop we're at right now (based on the clock),
+  // or from the beginning if the evening hasn't started yet.
+  const walkMap = createWalkMap({
+    section: document.querySelector("#walk-section"),
+    stops,
+    startIndex: Math.max(0, currentStopIndex),
+    currentStopIndex,
+    mapsUrl,
+    assetUrl,
   });
 
+  bindEvents(walkMap);
+}
+
+function bindEvents(walkMap) {
+  bindStopListEvents(walkMap);
   document.querySelector("#share-btn").addEventListener("click", shareCrawl);
 }
 
-function updateStopList() {
+function updateStopList(walkMap) {
   const list = document.querySelector(".stop-list");
   const progress = document.querySelector(".progress");
   if (!list || !progress) return;
 
   list.innerHTML = renderStopCards();
   progress.textContent = `${visited.size} / ${stops.length} besökta`;
-  bindVisitCheckboxesOnly();
+  bindStopListEvents(walkMap);
 }
 
-function bindVisitCheckboxesOnly() {
+function bindStopListEvents(walkMap) {
   document.querySelectorAll(".visit-checkbox").forEach((checkbox) => {
     checkbox.addEventListener("change", (event) => {
       const index = Number(event.target.dataset.index);
@@ -279,7 +162,13 @@ function bindVisitCheckboxesOnly() {
         visited.delete(index);
       }
       saveVisited();
-      updateStopList();
+      updateStopList(walkMap);
+    });
+  });
+
+  document.querySelectorAll(".show-on-map").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      walkMap.scrollToStop(Number(event.currentTarget.dataset.index));
     });
   });
 }
@@ -310,45 +199,6 @@ async function shareCrawl() {
       status.textContent = "";
     }, 2500);
   }
-}
-
-function initMap(currentStopIndex) {
-  if (map) {
-    map.remove();
-    map = null;
-    markers = [];
-    routeLine = null;
-  }
-
-  map = L.map("map", { zoomControl: true }).setView([stops[0].lat, stops[0].lng], 15);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }).addTo(map);
-
-  const routePoints = stops.map((stop) => [stop.lat, stop.lng]);
-
-  stops.forEach((stop, index) => {
-    const isCurrent = index === currentStopIndex;
-    const marker = L.marker([stop.lat, stop.lng])
-      .addTo(map)
-      .bindPopup(buildMarkerPopup(stop, index));
-
-    if (isCurrent) {
-      marker.openPopup();
-    }
-
-    markers.push(marker);
-  });
-
-  routeLine = L.polyline(routePoints, {
-    color: "#ef4444",
-    weight: 4,
-    opacity: 0.9,
-  }).addTo(map);
-
-  map.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
 }
 
 render();
